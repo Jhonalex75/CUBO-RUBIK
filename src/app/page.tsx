@@ -55,7 +55,7 @@ export default function Home() {
   }, [toast]);
 
   const handleScramble = async () => {
-    if (isRotating || !cubeRef.current) return;
+    if (isRotating || isSolving || !cubeRef.current) return;
     setIsRotating(true);
     const sequence = await cubeRef.current.scramble();
     setSolutionSequence(sequence);
@@ -65,7 +65,7 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    if (isRotating || !cubeRef.current) return;
+    if (isRotating || isSolving || !cubeRef.current) return;
     cubeRef.current.reset();
     setSolutionSequence([]);
     setCurrentMoveIndex(-1);
@@ -101,10 +101,16 @@ export default function Home() {
       const cubeState = await cubeRef.current.getCubeState();
       const solution: JscsSolve = window.Cube.solve(cubeState);
       if (!solution || solution.length === 0) {
-        throw new Error("El solucionador no pudo encontrar una solución.");
+        // If already solved, the solver returns an empty string.
+        if (cubeRef.current.isSolved(cubeState)) {
+          setSolutionSequence([]);
+        } else {
+          throw new Error("El solucionador no pudo encontrar una solución.");
+        }
+      } else {
+        const newSequence = solution.split(' ').filter((m: string) => m);
+        setSolutionSequence(newSequence);
       }
-      const newSequence = solution.split(' ').filter((m: string) => m);
-      setSolutionSequence(newSequence);
       setCurrentMoveIndex(-1);
     } catch (error) {
       console.error("Error solving cube:", error);
@@ -120,7 +126,7 @@ export default function Home() {
 
 
   const playMove = async (direction: 'next' | 'prev') => {
-    if (isRotating || !cubeRef.current) return;
+    if (isRotating || isSolving || !cubeRef.current) return;
     setIsRotating(true);
 
     let move: string | undefined;
@@ -141,7 +147,7 @@ export default function Home() {
   };
 
   const handleManualMove = async (move: string) => {
-    if (isRotating || !cubeRef.current) return;
+    if (isRotating || isSolving || !cubeRef.current) return;
     setIsRotating(true);
     await cubeRef.current.executeMove(move, 400);
     setIsScrambled(true);

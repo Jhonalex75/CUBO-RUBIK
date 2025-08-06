@@ -28,6 +28,11 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
     if (move.endsWith("2")) return move;
     return move + "'";
   };
+
+  const isSolved = (stateString: string) => {
+    const solvedState = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+    return stateString === solvedState;
+  };
   
   React.useImperativeHandle(ref, () => ({
     scramble: async () => {
@@ -48,6 +53,7 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
         return executeMove(move, duration);
     },
     getInverseMove,
+    isSolved,
     getCubeState: async () => {
       const colorToFaceMap: { [key: string]: string } = {
           'ffffff': 'U', 'c41e3a': 'R', '009e60': 'F',
@@ -67,6 +73,7 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
               if (!(sticker instanceof THREE.Mesh) || !(sticker.material instanceof THREE.MeshStandardMaterial)) return;
               
               const stickerNormal = new THREE.Vector3(0, 0, 1);
+              sticker.getWorldQuaternion(new THREE.Quaternion()).multiply(cubie.getWorldQuaternion(new THREE.Quaternion()));
               const normalMatrix = new THREE.Matrix3().getNormalMatrix(sticker.matrixWorld);
               worldNormal.copy(stickerNormal).applyMatrix3(normalMatrix).round();
 
