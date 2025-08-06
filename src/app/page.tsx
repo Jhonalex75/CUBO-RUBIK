@@ -180,7 +180,16 @@ export default function Home() {
       <div className="flex-grow relative h-full w-3/4 lg:w-6/8">
         <RubiksCubeView ref={cubeRef} isRotating={isRotating} setIsRotating={setIsRotating} />
         
-        <div className="absolute top-5 left-5 bg-card/80 backdrop-blur-sm p-4 rounded-lg border max-w-sm shadow-lg">
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 flex gap-3 p-3 bg-card/80 backdrop-blur-sm rounded-lg border shadow-lg">
+          <Button onClick={handleScramble} disabled={isRotating || isSolving} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+            Mezclar
+          </Button>
+          <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+            Reiniciar
+          </Button>
+        </div>
+
+        <div className="absolute bottom-5 left-5 bg-card/80 backdrop-blur-sm p-4 rounded-lg border max-w-sm shadow-lg">
            <h1 className="text-xl font-bold mb-2 text-card-foreground">Asistente de Cubo de Rubik</h1>
            <p className="text-sm text-muted-foreground">
              Usa el mouse para rotar la cámara. Mezcla el cubo y sigue la solución o practica con los controles manuales.
@@ -255,16 +264,6 @@ export default function Home() {
                 </Accordion>
             </DialogContent>
         </Dialog>
-
-
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-3 p-3 bg-card/80 backdrop-blur-sm rounded-lg border shadow-lg">
-          <Button onClick={handleScramble} disabled={isRotating || isSolving} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
-            Mezclar
-          </Button>
-          <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
-            Reiniciar
-          </Button>
-        </div>
       </div>
 
       <aside className="w-1/4 lg:w-[calc(100%/8)] h-full bg-card border-l border-border flex flex-col">
