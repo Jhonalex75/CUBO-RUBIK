@@ -194,7 +194,7 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
             t = 1;
         }
         
-        THREE.Quaternion.slerp(startQuaternion, targetQuaternion, pivot.quaternion, t);
+        pivot.quaternion.copy(startQuaternion).slerp(targetQuaternion, t);
 
         if (t === 1) {
             finishRotation();
