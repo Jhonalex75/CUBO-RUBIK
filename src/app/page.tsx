@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { RubiksCubeView } from '@/components/rubiks-cube-view';
-import { SolverPanel } from '@/components/solver-panel';
+import { SolutionSequencePanel } from '@/components/solution-sequence-panel';
+import { ManualControlsPanel } from '@/components/manual-controls-panel';
 import type { RubiksCubeHandle } from '@/lib/types';
 import { solutionSteps } from '@/lib/cube-constants';
-import { explainNextStep } from '@/ai/flows/explain-next-step';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
@@ -19,9 +19,6 @@ export default function Home() {
   const [solutionSequence, setSolutionSequence] = React.useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = React.useState(-1);
 
-  const [aiLoading, setAiLoading] = React.useState(false);
-  const [aiHint, setAiHint] = React.useState<string | null>(null);
-
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -29,7 +26,6 @@ export default function Home() {
   const handleScramble = async () => {
     if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
-    setAiHint(null);
     const sequence = await cubeRef.current.scramble();
     setSolutionSequence(sequence);
     setCurrentMoveIndex(-1);
@@ -43,7 +39,6 @@ export default function Home() {
     setSolutionSequence([]);
     setCurrentMoveIndex(-1);
     setIsScrambled(false);
-    setAiHint(null);
   };
 
   const playMove = async (direction: 'next' | 'prev') => {
@@ -64,7 +59,6 @@ export default function Home() {
     }
     
     setCurrentMoveIndex(newIndex);
-    setAiHint(null);
     setIsRotating(false);
   };
 
@@ -75,48 +69,6 @@ export default function Home() {
     setIsRotating(false);
   };
 
-  const handleGetAIHint = async () => {
-    if (aiLoading || !cubeRef.current || currentMoveIndex < 0) return;
-    setAiLoading(true);
-
-    try {
-      let movesCount = 0;
-      let currentStep = null;
-      for (const step of solutionSteps) {
-          const stepMoves = step.algorithm.split(' ').filter(m => m);
-          if (currentMoveIndex < movesCount + stepMoves.length) {
-              currentStep = step;
-              break;
-          }
-          movesCount += stepMoves.length;
-      }
-      
-      if (!currentStep) {
-        throw new Error("Could not determine current solution step.");
-      }
-
-      const cubeState = await cubeRef.current.getCubeState();
-      
-      const result = await explainNextStep({
-        stepTitle: currentStep.title,
-        stepExplanation: currentStep.explanation,
-        cubeState: cubeState
-      });
-
-      setAiHint(result.simplifiedExplanation);
-    } catch (error) {
-      console.error("Error getting AI hint:", error);
-      toast({
-        variant: "destructive",
-        title: "Error de IA",
-        description: "No se pudo obtener la pista del asistente de IA.",
-      });
-      setAiHint(null);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   if (!isMounted) {
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -124,10 +76,45 @@ export default function Home() {
        </div>
     );
   }
+  
+  const currentStep = solutionSteps.find(step => {
+      const stepMovesCount = step.algorithm.split(' ').filter(m => m).length;
+      const stepEndIndex = (solutionSequence.findIndex(s => s === step.algorithm.split(' ').filter(m=>m)[0]) ?? -1) + stepMovesCount;
+      return isScrambled && currentMoveIndex < stepEndIndex && currentMoveIndex >= (stepEndIndex - stepMovesCount);
+  });
+  
+  let movesCount = 0;
+  let currentStepTitle = "";
+  let currentStepExplanation = "";
+  if (isScrambled) {
+    for (const step of solutionSteps) {
+        const stepMoves = step.algorithm.split(' ').filter(m => m);
+        if (currentMoveIndex < movesCount + stepMoves.length) {
+            currentStepTitle = step.title;
+            currentStepExplanation = step.explanation;
+            break;
+        }
+        movesCount += stepMoves.length;
+    }
+  }
+
 
   return (
-    <main className="flex h-screen w-full flex-col lg:flex-row bg-background text-foreground overflow-hidden">
-      <div className="flex-grow relative h-1/2 lg:h-full w-full lg:w-auto">
+    <main className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      <aside className="w-1/4 lg:w-[calc(100%/8)] h-full bg-card border-r border-border flex flex-col">
+        <SolutionSequencePanel
+            solutionSequence={solutionSequence}
+            currentMoveIndex={currentMoveIndex}
+            isScrambled={isScrambled}
+            isRotating={isRotating}
+            onPrevMove={() => playMove('prev')}
+            onNextMove={() => playMove('next')}
+            currentStepTitle={currentStepTitle}
+            currentStepExplanation={currentStepExplanation}
+        />
+      </aside>
+
+      <div className="flex-grow relative h-full w-3/4 lg:w-6/8">
         <RubiksCubeView ref={cubeRef} isRotating={isRotating} setIsRotating={setIsRotating} />
         
         <div className="absolute top-5 left-5 bg-card/80 backdrop-blur-sm p-4 rounded-lg border max-w-sm shadow-lg">
@@ -146,18 +133,11 @@ export default function Home() {
           </button>
         </div>
       </div>
-      <aside className="w-full lg:w-[420px] flex-shrink-0 h-1/2 lg:h-full bg-card border-l border-border flex flex-col">
-        <SolverPanel
-          solutionSequence={solutionSequence}
-          currentMoveIndex={currentMoveIndex}
-          isScrambled={isScrambled}
+
+      <aside className="w-1/4 lg:w-[calc(100%/8)] h-full bg-card border-l border-border flex flex-col">
+        <ManualControlsPanel
           isRotating={isRotating}
-          aiHint={aiHint}
-          aiLoading={aiLoading}
-          onPrevMove={() => playMove('prev')}
-          onNextMove={() => playMove('next')}
           onManualMove={handleManualMove}
-          onGetAIHint={handleGetAIHint}
         />
       </aside>
     </main>
