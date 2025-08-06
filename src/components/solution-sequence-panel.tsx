@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,8 +13,6 @@ interface SolutionSequencePanelProps {
   isRotating: boolean;
   onPrevMove: () => void;
   onNextMove: () => void;
-  currentStepTitle: string;
-  currentStepExplanation: string;
 }
 
 export function SolutionSequencePanel({
@@ -24,8 +22,6 @@ export function SolutionSequencePanel({
   isRotating,
   onPrevMove,
   onNextMove,
-  currentStepTitle,
-  currentStepExplanation,
 }: SolutionSequencePanelProps) {
 
   return (
@@ -63,17 +59,6 @@ export function SolutionSequencePanel({
           </div>
         </CardContent>
       </Card>
-      
-      {isScrambled && (
-        <Card className="flex-shrink-0">
-            <CardHeader>
-                <CardTitle className="text-lg">{currentStepTitle || 'Paso Actual'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <CardDescription>{currentStepExplanation || 'Sigue los pasos para resolver el cubo.'}</CardDescription>
-            </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
