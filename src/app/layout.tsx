@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import Script from "next/script";
 
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className="font-body antialiased" suppressHydrationWarning>
         {children}
         <Toaster />
+        <Script src="https://cdn.jsdelivr.net/npm/js-cube-solver/dist/js-cube-solver.min.js" strategy="lazyOnload" />
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CUBIE_SIZE, CUBIE_GAP, solutionSteps, faceColors, colorMap } from '@/lib/cube-constants';
+import { CUBIE_SIZE, CUBIE_GAP, solutionSteps, faceColors } from '@/lib/cube-constants';
 import type { RubiksCubeHandle } from '@/lib/types';
 
 interface RubiksCubeViewProps {
@@ -49,40 +49,57 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
     },
     getInverseMove,
     getCubeState: async () => {
-      let stateString = "Current cube state:\n";
-      const worldVector = new THREE.Vector3();
-
+      const colorToFaceMap: { [key: string]: string } = {
+          'ffffff': 'U', 'c41e3a': 'R', '009e60': 'F',
+          'ffd700': 'D', 'ff5800': 'L', '0051ba': 'B'
+      };
+  
+      const faces: { [face: string]: { pos: THREE.Vector3, f: string }[] } = {
+          U: [], R: [], F: [], D: [], L: [], B: []
+      };
+  
+      const worldPosition = new THREE.Vector3();
+      const worldNormal = new THREE.Vector3();
+  
       cubiesRef.current.forEach(cubie => {
-          const pos = cubie.position.clone().divideScalar(CUBIE_SIZE + CUBIE_GAP).round();
-          const stickers: string[] = [];
-          
+          cubie.updateWorldMatrix(true, false);
           cubie.children.forEach(sticker => {
-              if (sticker instanceof THREE.Mesh) {
-                  const stickerColorHex = (sticker.material as THREE.MeshStandardMaterial).color.getHex();
-                  const colorName = colorMap[stickerColorHex] || 'unknown';
+              if (!(sticker instanceof THREE.Mesh) || !(sticker.material instanceof THREE.MeshStandardMaterial)) return;
+              
+              const stickerNormal = new THREE.Vector3(0, 0, 1);
+              const normalMatrix = new THREE.Matrix3().getNormalMatrix(sticker.matrixWorld);
+              worldNormal.copy(stickerNormal).applyMatrix3(normalMatrix).round();
 
-                  // Use object's world direction to determine face
-                  sticker.getWorldDirection(worldVector);
-                  worldVector.applyQuaternion(cubie.quaternion.clone().invert());
-                  
-                  let face = 'unknown';
-                  if (worldVector.z > 0.9) face = 'front';
-                  else if (worldVector.z < -0.9) face = 'back';
-                  else if (worldVector.y > 0.9) face = 'top';
-                  else if (worldVector.y < -0.9) face = 'bottom';
-                  else if (worldVector.x > 0.9) face = 'right';
-                  else if (worldVector.x < -0.9) face = 'left';
+              sticker.getWorldPosition(worldPosition);
 
-                  stickers.push(`${face}=${colorName}`);
-              }
+              const colorHex = sticker.material.color.getHexString();
+              const faceChar = colorToFaceMap[colorHex];
+  
+              if (worldNormal.y > 0.5) faces.U.push({ pos: worldPosition.clone(), f: faceChar });
+              else if (worldNormal.y < -0.5) faces.D.push({ pos: worldPosition.clone(), f: faceChar });
+              else if (worldNormal.x > 0.5) faces.R.push({ pos: worldPosition.clone(), f: faceChar });
+              else if (worldNormal.x < -0.5) faces.L.push({ pos: worldPosition.clone(), f: faceChar });
+              else if (worldNormal.z > 0.5) faces.F.push({ pos: worldPosition.clone(), f: faceChar });
+              else if (worldNormal.z < -0.5) faces.B.push({ pos: worldPosition.clone(), f: faceChar });
           });
-
-          if(stickers.length > 0) {
-            stateString += `Cubie at (${pos.x}, ${pos.y}, ${pos.z}): ${stickers.join(', ')}\n`;
-          }
       });
+  
+      const sortOrder = {
+          U: (a: any, b: any) => a.pos.z - b.pos.z || a.pos.x - b.pos.x,
+          R: (a: any, b: any) => -a.pos.y - -b.pos.y || b.pos.z - a.pos.z,
+          F: (a: any, b: any) => -a.pos.y - -b.pos.y || a.pos.x - b.pos.x,
+          D: (a: any, b: any) => b.pos.z - a.pos.z || a.pos.x - b.pos.x,
+          L: (a: any, b: any) => -a.pos.y - -b.pos.y || a.pos.z - b.pos.z,
+          B: (a: any, b: any) => -a.pos.y - -b.pos.y || b.pos.x - a.pos.x
+      };
+  
+      let stateString = "";
+      for (const face of ['U', 'R', 'F', 'D', 'L', 'B']) {
+          stateString += faces[face as keyof typeof faces].sort(sortOrder[face as keyof typeof sortOrder]).map(s => s.f).join('');
+      }
+      
       return stateString;
-    },
+  },
   }));
 
   const createSticker = (color: number, face: string): THREE.Mesh => {
@@ -117,7 +134,7 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
     if (cubeGroupRef.current) sceneRef.current?.remove(cubeGroupRef.current);
     cubeGroupRef.current = new THREE.Group();
     cubiesRef.current = [];
-    const stickerMaterial = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.7, metalness: 0.1 });
+    const stickerMaterial = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7, metalness: 0.1 });
     for (let x = -1; x <= 1; x++) {
         for (let y = -1; y <= 1; y++) {
             for (let z = -1; z <= 1; z++) {
@@ -174,11 +191,15 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
     function animateRotation() {
         t += frameDuration;
         if (t >= 1) {
-            pivot.quaternion.copy(targetQuaternion);
+            t = 1;
+        }
+        
+        THREE.Quaternion.slerp(startQuaternion, targetQuaternion, pivot.quaternion, t);
+
+        if (t === 1) {
             finishRotation();
             return;
         }
-        pivot.quaternion.slerp(targetQuaternion, t);
         requestAnimationFrame(animateRotation);
     }
 

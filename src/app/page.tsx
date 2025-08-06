@@ -11,7 +11,13 @@ import { Loader2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { solveCube } from '@/ai/flows/solve-cube-flow';
+import type {JscsSolve} from 'js-cube-solver';
+
+declare global {
+  interface Window {
+    Cube: any;
+  }
+}
 
 
 export default function Home() {
@@ -24,10 +30,30 @@ export default function Home() {
   const [isScrambled, setIsScrambled] = React.useState(false);
   const [solutionSequence, setSolutionSequence] = React.useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = React.useState(-1);
+  const [solverReady, setSolverReady] = React.useState(false);
 
   React.useEffect(() => {
     setIsMounted(true);
-  }, []);
+    // Initialize solver in the background
+    const checkSolver = () => {
+        if (typeof window.Cube !== 'undefined') {
+            try {
+                window.Cube.initSolver();
+                setSolverReady(true);
+            } catch (e) {
+                console.error("Failed to initialize solver:", e);
+                toast({
+                  title: "Error del Solucionador",
+                  description: "No se pudo inicializar el motor de resolución.",
+                  variant: "destructive",
+                });
+            }
+        } else {
+            setTimeout(checkSolver, 100);
+        }
+    };
+    checkSolver();
+  }, [toast]);
 
   const handleScramble = async () => {
     if (isRotating || !cubeRef.current) return;
@@ -48,20 +74,22 @@ export default function Home() {
   };
 
   const handleSolveFromCurrentState = async () => {
-    if (isRotating || !cubeRef.current) return;
+    if (isRotating || !cubeRef.current || !solverReady || !isScrambled) return;
     setIsSolving(true);
     try {
       const cubeState = await cubeRef.current.getCubeState();
-      const response = await solveCube({ cubeState });
-      const newSequence = response.solution.split(' ').filter(m => m);
+      const solution: JscsSolve = window.Cube.solve(cubeState);
+      if (!solution || solution.length === 0) {
+        throw new Error("El solucionador no pudo encontrar una solución.");
+      }
+      const newSequence = solution.split(' ').filter((m: string) => m);
       setSolutionSequence(newSequence);
       setCurrentMoveIndex(-1);
-      setIsScrambled(true); 
     } catch (error) {
       console.error("Error solving cube:", error);
       toast({
-        title: "Error de la IA",
-        description: "No se pudo generar una solución. Por favor, inténtalo de nuevo.",
+        title: "Error del Solucionador",
+        description: "No se pudo generar una solución. Por favor, intenta mezclar de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -97,7 +125,7 @@ export default function Home() {
     await cubeRef.current.executeMove(move, 400);
     setSolutionSequence([]);
     setCurrentMoveIndex(-1);
-    setIsScrambled(false);
+    setIsScrambled(true); // After a manual move, it's considered scrambled
     setIsRotating(false);
   };
 
@@ -109,30 +137,8 @@ export default function Home() {
     );
   }
   
-  const currentStep = solutionSteps.find(step => {
-      const stepMovesCount = step.algorithm.split(' ').filter(m => m).length;
-      const stepEndIndex = (solutionSequence.findIndex(s => s === step.algorithm.split(' ').filter(m=>m)[0]) ?? -1) + stepMovesCount;
-      return isScrambled && currentMoveIndex < stepEndIndex && currentMoveIndex >= (stepEndIndex - stepMovesCount);
-  });
-  
-  let movesCount = 0;
-  let currentStepTitle = "";
-  let currentStepExplanation = "";
-  if (isScrambled) {
-    for (const step of solutionSteps) {
-        const stepMoves = step.algorithm.split(' ').filter(m => m);
-        if (currentMoveIndex < movesCount + stepMoves.length) {
-            currentStepTitle = step.title;
-            currentStepExplanation = step.explanation;
-            break;
-        }
-        movesCount += stepMoves.length;
-    }
-  }
-
-
   return (
-    <main className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+    <main className="flex h-screen w-full bg-background text-foreground overflow-hidden" suppressHydrationWarning>
       <aside className="w-1/4 lg:w-[calc(100%/8)] h-full bg-card border-r border-border flex flex-col">
         <SolutionSequencePanel
             solutionSequence={solutionSequence}
@@ -184,7 +190,7 @@ export default function Home() {
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-2">
-                    <AccordionTrigger>Pasos de la Solución</AccordionTrigger>
+                    <AccordionTrigger>Pasos de la Solución (Principiante)</AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-4">
                         {solutionSteps.map((step, index) => (
@@ -205,8 +211,8 @@ export default function Home() {
           <Button onClick={handleScramble} disabled={isRotating || isSolving} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Mezclar
           </Button>
-          <Button onClick={handleSolveFromCurrentState} disabled={isRotating || isSolving} className="btn-primary bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
-            {isSolving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resolviendo...</> : 'Resolver desde aquí'}
+          <Button onClick={handleSolveFromCurrentState} disabled={isRotating || isSolving || !solverReady || !isScrambled} className="btn-primary bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+            {isSolving || !solverReady ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {solverReady ? 'Resolviendo...' : 'Cargando...'}</> : 'Resolver desde aquí'}
           </Button>
           <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Reiniciar

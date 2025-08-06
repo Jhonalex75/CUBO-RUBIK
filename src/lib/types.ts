@@ -5,3 +5,6 @@ export interface RubiksCubeHandle {
   getInverseMove: (move: string) => string;
   getCubeState: () => Promise<string>;
 }
+
+// Type definition for js-cube-solver solve result
+export type JscsSolve = string;
