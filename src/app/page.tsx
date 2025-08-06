@@ -35,24 +35,24 @@ export default function Home() {
   React.useEffect(() => {
     setIsMounted(true);
     // Initialize solver in the background
-    const checkSolver = () => {
-        if (typeof window.Cube !== 'undefined') {
-            try {
-                window.Cube.initSolver();
-                setSolverReady(true);
-            } catch (e) {
-                console.error("Failed to initialize solver:", e);
-                toast({
-                  title: "Error del Solucionador",
-                  description: "No se pudo inicializar el motor de resolución.",
-                  variant: "destructive",
-                });
-            }
-        } else {
-            setTimeout(checkSolver, 100);
+    const initSolver = async () => {
+        // Wait for the solver script to load
+        while (typeof window.Cube === 'undefined') {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        try {
+            window.Cube.initSolver();
+            setSolverReady(true);
+        } catch (e) {
+            console.error("Failed to initialize solver:", e);
+            toast({
+              title: "Error del Solucionador",
+              description: "No se pudo inicializar el motor de resolución.",
+              variant: "destructive",
+            });
         }
     };
-    checkSolver();
+    initSolver();
   }, [toast]);
 
   const handleScramble = async () => {
@@ -212,7 +212,7 @@ export default function Home() {
             Mezclar
           </Button>
           <Button onClick={handleSolveFromCurrentState} disabled={isRotating || isSolving || !solverReady || !isScrambled} className="btn-primary bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
-            {isSolving || !solverReady ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {solverReady ? 'Resolviendo...' : 'Cargando...'}</> : 'Resolver desde aquí'}
+            {isSolving || !solverReady ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {solverReady ? 'Resolviendo...' : 'Cargando Motor...'}</> : 'Analizar y Resolver'}
           </Button>
           <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Reiniciar
@@ -229,3 +229,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
