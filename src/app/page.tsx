@@ -101,7 +101,6 @@ export default function Home() {
       const cubeState = await cubeRef.current.getCubeState();
       const solution: JscsSolve = window.Cube.solve(cubeState);
       if (!solution || solution.length === 0) {
-        // If already solved, the solver returns an empty string.
         if (cubeRef.current.isSolved(cubeState)) {
           setSolutionSequence([]);
         } else {
@@ -126,8 +125,9 @@ export default function Home() {
 
 
   const playMove = async (direction: 'next' | 'prev') => {
-    if (isRotating || isSolving || !cubeRef.current) return;
+    if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
+    setIsSolving(true);
 
     let move: string | undefined;
     let newIndex = currentMoveIndex;
@@ -143,17 +143,16 @@ export default function Home() {
     }
     
     setCurrentMoveIndex(newIndex);
+    setIsSolving(false);
     setIsRotating(false);
   };
 
   const handleManualMove = async (move: string) => {
-    if (isRotating || isSolving || !cubeRef.current) return;
+    if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
     await cubeRef.current.executeMove(move, 400);
     setIsScrambled(true);
     setIsRotating(false);
-
-    // Automatically solve after a manual move
     await solveFromCurrentState();
   };
 
@@ -228,6 +227,29 @@ export default function Home() {
                            </div>
                         ))}
                       </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-3">
+                    <AccordionTrigger>Datos Curiosos y Probabilidades</AccordionTrigger>
+                    <AccordionContent>
+                       <div className="text-sm space-y-3">
+                          <div>
+                            <h4 className="font-bold">Número de Combinaciones</h4>
+                            <p className="text-muted-foreground">Hay <strong>43,252,003,274,489,856,000</strong> (más de 43 quintillones) de estados posibles para un Cubo de Rubik.</p>
+                          </div>
+                          <div>
+                            <h4 className="font-bold">Resolverlo al Azar</h4>
+                            <p className="text-muted-foreground">La probabilidad de resolver el cubo con movimientos aleatorios es prácticamente cero. Es más fácil que te caiga un rayo varias veces.</p>
+                          </div>
+                          <div>
+                            <h4 className="font-bold">El Número de Dios</h4>
+                            <p className="text-muted-foreground">Se ha demostrado matemáticamente que cualquier configuración del cubo puede ser resuelta en <strong>20 movimientos o menos</strong>.</p>
+                          </div>
+                           <div>
+                            <h4 className="font-bold">Record Mundial</h4>
+                            <p className="text-muted-foreground">El récord mundial de resolución es de poco más de 3 segundos, lo que demuestra la increíble habilidad humana para reconocer patrones y ejecutar algoritmos.</p>
+                          </div>
+                       </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
