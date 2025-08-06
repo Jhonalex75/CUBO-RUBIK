@@ -72,14 +72,28 @@ export default function Home() {
     setIsScrambled(false);
   };
 
+  const waitForSolver = (): Promise<void> => {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (solverReady) {
+          resolve();
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+      check();
+    });
+  };
+
   const solveFromCurrentState = async () => {
-    if (!cubeRef.current || !solverReady) {
-      toast({
-        title: "El solucionador no está listo",
-        description: "Por favor, espera a que el motor de resolución termine de cargarse.",
-        variant: "destructive"
-      });
-      return;
+    await waitForSolver();
+    if (!cubeRef.current) {
+        toast({
+            title: "El cubo no está disponible",
+            description: "No se puede acceder a la referencia del cubo.",
+            variant: "destructive"
+        });
+        return;
     }
     
     setIsSolving(true);
@@ -234,5 +248,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
