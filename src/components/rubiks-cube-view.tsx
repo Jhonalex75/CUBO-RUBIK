@@ -50,28 +50,33 @@ export const RubiksCubeView = React.forwardRef<RubiksCubeHandle, RubiksCubeViewP
     getInverseMove,
     getCubeState: async () => {
       let stateString = "Current cube state:\n";
+      const worldVector = new THREE.Vector3();
+
       cubiesRef.current.forEach(cubie => {
           const pos = cubie.position.clone().divideScalar(CUBIE_SIZE + CUBIE_GAP).round();
           const stickers: string[] = [];
+          
           cubie.children.forEach(sticker => {
               if (sticker instanceof THREE.Mesh) {
                   const stickerColorHex = (sticker.material as THREE.MeshStandardMaterial).color.getHex();
                   const colorName = colorMap[stickerColorHex] || 'unknown';
+
+                  // Use object's world direction to determine face
+                  sticker.getWorldDirection(worldVector);
+                  worldVector.applyQuaternion(cubie.quaternion.clone().invert());
                   
-                  // Determine face based on sticker's rotation relative to the cubie
-                  const yRot = sticker.rotation.y;
-                  const xRot = sticker.rotation.x;
                   let face = 'unknown';
-                  if (Math.abs(yRot - Math.PI / 2) < 0.1) face = 'right';
-                  else if (Math.abs(yRot + Math.PI / 2) < 0.1) face = 'left';
-                  else if (Math.abs(xRot - Math.PI / 2) < 0.1) face = 'bottom';
-                  else if (Math.abs(xRot + Math.PI / 2) < 0.1) face = 'top';
-                  else if (Math.abs(sticker.rotation.y) > 3) face = 'back';
-                  else face = 'front';
-                  
+                  if (worldVector.z > 0.9) face = 'front';
+                  else if (worldVector.z < -0.9) face = 'back';
+                  else if (worldVector.y > 0.9) face = 'top';
+                  else if (worldVector.y < -0.9) face = 'bottom';
+                  else if (worldVector.x > 0.9) face = 'right';
+                  else if (worldVector.x < -0.9) face = 'left';
+
                   stickers.push(`${face}=${colorName}`);
               }
           });
+
           if(stickers.length > 0) {
             stateString += `Cubie at (${pos.x}, ${pos.y}, ${pos.z}): ${stickers.join(', ')}\n`;
           }
