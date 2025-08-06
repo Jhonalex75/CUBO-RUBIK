@@ -11,6 +11,7 @@ import { Loader2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { solveCube } from '@/ai/flows/solve-cube-flow';
 
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
 
   const [isMounted, setIsMounted] = React.useState(false);
   const [isRotating, setIsRotating] = React.useState(false);
+  const [isSolving, setIsSolving] = React.useState(false);
   const [isScrambled, setIsScrambled] = React.useState(false);
   const [solutionSequence, setSolutionSequence] = React.useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = React.useState(-1);
@@ -45,6 +47,29 @@ export default function Home() {
     setIsScrambled(false);
   };
 
+  const handleSolveFromCurrentState = async () => {
+    if (isRotating || !cubeRef.current) return;
+    setIsSolving(true);
+    try {
+      const cubeState = await cubeRef.current.getCubeState();
+      const response = await solveCube({ cubeState });
+      const newSequence = response.solution.split(' ').filter(m => m);
+      setSolutionSequence(newSequence);
+      setCurrentMoveIndex(-1);
+      setIsScrambled(true); 
+    } catch (error) {
+      console.error("Error solving cube:", error);
+      toast({
+        title: "Error de la IA",
+        description: "No se pudo generar una solución. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSolving(false);
+    }
+  };
+
+
   const playMove = async (direction: 'next' | 'prev') => {
     if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
@@ -70,6 +95,9 @@ export default function Home() {
     if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
     await cubeRef.current.executeMove(move, 400);
+    setSolutionSequence([]);
+    setCurrentMoveIndex(-1);
+    setIsScrambled(false);
     setIsRotating(false);
   };
 
@@ -110,7 +138,7 @@ export default function Home() {
             solutionSequence={solutionSequence}
             currentMoveIndex={currentMoveIndex}
             isScrambled={isScrambled}
-            isRotating={isRotating}
+            isRotating={isRotating || isSolving}
             onPrevMove={() => playMove('prev')}
             onNextMove={() => playMove('next')}
         />
@@ -174,18 +202,21 @@ export default function Home() {
 
 
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-3 p-3 bg-card/80 backdrop-blur-sm rounded-lg border shadow-lg">
-          <button onClick={handleScramble} disabled={isRotating} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+          <Button onClick={handleScramble} disabled={isRotating || isSolving} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Mezclar
-          </button>
-          <button onClick={handleReset} disabled={isRotating} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+          </Button>
+          <Button onClick={handleSolveFromCurrentState} disabled={isRotating || isSolving} className="btn-primary bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
+            {isSolving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resolviendo...</> : 'Resolver desde aquí'}
+          </Button>
+          <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Reiniciar
-          </button>
+          </Button>
         </div>
       </div>
 
       <aside className="w-1/4 lg:w-[calc(100%/8)] h-full bg-card border-l border-border flex flex-col">
         <ManualControlsPanel
-          isRotating={isRotating}
+          isRotating={isRotating || isSolving}
           onManualMove={handleManualMove}
         />
       </aside>

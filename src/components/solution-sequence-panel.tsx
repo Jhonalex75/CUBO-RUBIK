@@ -33,7 +33,7 @@ export function SolutionSequencePanel({
         <CardContent className="flex flex-col flex-grow">
           <ScrollArea className="h-48 w-full pr-4">
             <div className="flex flex-wrap gap-2">
-              {isScrambled ? (
+              {solutionSequence.length > 0 ? (
                 solutionSequence.map((move, index) => (
                   <Badge
                     key={index}
@@ -44,7 +44,7 @@ export function SolutionSequencePanel({
                   </Badge>
                 ))
               ) : (
-                <p className="text-muted-foreground text-sm">Mezcla el cubo para ver la solución...</p>
+                <p className="text-muted-foreground text-sm">Mezcla el cubo o resuelve desde el estado actual para ver la solución...</p>
               )}
             </div>
           </ScrollArea>
@@ -52,7 +52,7 @@ export function SolutionSequencePanel({
             <Button onClick={onPrevMove} disabled={isRotating || currentMoveIndex < 0} variant="secondary" size="icon">
               <ArrowLeft className="h-4 w-4" /> 
             </Button>
-            <span className="text-xs text-muted-foreground">{currentMoveIndex + 1} / {solutionSequence.length}</span>
+            <span className="text-xs text-muted-foreground">{solutionSequence.length > 0 ? `${currentMoveIndex + 1} / ${solutionSequence.length}`: '0 / 0'}</span>
             <Button onClick={onNextMove} disabled={isRotating || currentMoveIndex >= solutionSequence.length - 1} variant="secondary" size="icon">
               <ArrowRight className="h-4 w-4" />
             </Button>
