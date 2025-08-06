@@ -34,25 +34,27 @@ export default function Home() {
 
   React.useEffect(() => {
     setIsMounted(true);
-    // Initialize solver in the background
-    const initSolver = async () => {
-        // Wait for the solver script to load
-        while (typeof window.Cube === 'undefined') {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        try {
-            window.Cube.initSolver();
-            setSolverReady(true);
-        } catch (e) {
-            console.error("Failed to initialize solver:", e);
-            toast({
-              title: "Error del Solucionador",
-              description: "No se pudo inicializar el motor de resolución.",
-              variant: "destructive",
-            });
+    // Check if the solver script has loaded.
+     const checkSolver = () => {
+        if (typeof window.Cube !== 'undefined') {
+            try {
+                // The library is loaded. Now we can initialize the engine.
+                window.Cube.initSolver();
+                setSolverReady(true);
+            } catch (e) {
+                console.error("Failed to initialize solver:", e);
+                 toast({
+                    title: "Error del Solucionador",
+                    description: "No se pudo inicializar el motor de resolución.",
+                    variant: "destructive",
+                });
+            }
+        } else {
+            // The library isn't ready yet, check again.
+            setTimeout(checkSolver, 100);
         }
     };
-    initSolver();
+    checkSolver();
   }, [toast]);
 
   const handleScramble = async () => {
@@ -74,8 +76,20 @@ export default function Home() {
   };
 
   const handleSolveFromCurrentState = async () => {
-    if (isRotating || !cubeRef.current || !solverReady || !isScrambled) return;
+    if (isRotating || !cubeRef.current || !isScrambled) return;
     setIsSolving(true);
+    
+    // Ensure solver is ready before using it.
+    if (!solverReady) {
+        toast({
+            title: "El solucionador no está listo",
+            description: "Por favor, espera a que el motor de resolución termine de cargarse.",
+            variant: "destructive"
+        });
+        setIsSolving(false);
+        return;
+    }
+
     try {
       const cubeState = await cubeRef.current.getCubeState();
       const solution: JscsSolve = window.Cube.solve(cubeState);
