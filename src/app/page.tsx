@@ -34,11 +34,9 @@ export default function Home() {
 
   React.useEffect(() => {
     setIsMounted(true);
-    // Check if the solver script has loaded.
-     const checkSolver = () => {
+    const checkSolver = () => {
         if (typeof window.Cube !== 'undefined') {
             try {
-                // The library is loaded. Now we can initialize the engine.
                 window.Cube.initSolver();
                 setSolverReady(true);
             } catch (e) {
@@ -50,7 +48,6 @@ export default function Home() {
                 });
             }
         } else {
-            // The library isn't ready yet, check again.
             setTimeout(checkSolver, 100);
         }
     };
@@ -75,21 +72,17 @@ export default function Home() {
     setIsScrambled(false);
   };
 
-  const handleSolveFromCurrentState = async () => {
-    if (isRotating || !cubeRef.current || !isScrambled) return;
-    setIsSolving(true);
-    
-    // Ensure solver is ready before using it.
-    if (!solverReady) {
-        toast({
-            title: "El solucionador no está listo",
-            description: "Por favor, espera a que el motor de resolución termine de cargarse.",
-            variant: "destructive"
-        });
-        setIsSolving(false);
-        return;
+  const solveFromCurrentState = async () => {
+    if (!cubeRef.current || !solverReady) {
+      toast({
+        title: "El solucionador no está listo",
+        description: "Por favor, espera a que el motor de resolución termine de cargarse.",
+        variant: "destructive"
+      });
+      return;
     }
-
+    
+    setIsSolving(true);
     try {
       const cubeState = await cubeRef.current.getCubeState();
       const solution: JscsSolve = window.Cube.solve(cubeState);
@@ -103,7 +96,7 @@ export default function Home() {
       console.error("Error solving cube:", error);
       toast({
         title: "Error del Solucionador",
-        description: "No se pudo generar una solución. Por favor, intenta mezclar de nuevo.",
+        description: "No se pudo generar una solución desde el estado actual.",
         variant: "destructive",
       });
     } finally {
@@ -137,10 +130,11 @@ export default function Home() {
     if (isRotating || !cubeRef.current) return;
     setIsRotating(true);
     await cubeRef.current.executeMove(move, 400);
-    setSolutionSequence([]);
-    setCurrentMoveIndex(-1);
-    setIsScrambled(true); // After a manual move, it's considered scrambled
+    setIsScrambled(true);
     setIsRotating(false);
+
+    // Automatically solve after a manual move
+    await solveFromCurrentState();
   };
 
   if (!isMounted) {
@@ -225,9 +219,6 @@ export default function Home() {
           <Button onClick={handleScramble} disabled={isRotating || isSolving} className="btn-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Mezclar
           </Button>
-          <Button onClick={handleSolveFromCurrentState} disabled={isRotating || isSolving || !solverReady || !isScrambled} className="btn-primary bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
-            {isSolving || !solverReady ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {solverReady ? 'Resolviendo...' : 'Cargando Motor...'}</> : 'Analizar y Resolver'}
-          </Button>
           <Button onClick={handleReset} disabled={isRotating || isSolving} className="btn-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-semibold">
             Reiniciar
           </Button>
@@ -243,3 +234,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
