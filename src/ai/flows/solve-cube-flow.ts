@@ -29,9 +29,12 @@ const prompt = ai.definePrompt({
   input: {schema: SolveCubeInputSchema},
   output: {schema: SolveCubeOutputSchema},
   prompt: `Eres un experto mundial en resolver el Cubo de Rubik.
-Tu tarea es proporcionar una secuencia de movimientos para resolver un cubo a partir de un estado dado.
-La secuencia debe estar en la notación de Singmaster estándar (F, B, U, D, L, R, con ' para antihorario y 2 para giros de 180 grados).
-Genera la secuencia de solución más eficiente que conozcas.
+Tu tarea es proporcionar una secuencia de movimientos COMPLETA y detallada para resolver un cubo a partir de un estado dado.
+La secuencia debe estar en la notación de Singmaster estándar (F, B, U, D, L, R).
+- Usa ' para giros antihorarios (ej. R').
+- Usa 2 para giros de 180 grados (ej. U2).
+- Cada movimiento debe estar separado por un espacio.
+Genera la secuencia de solución completa más eficiente que conozcas, sin abreviaturas ni pasos omitidos.
 
 Aquí está el estado actual del cubo:
 {{{cubeState}}}
